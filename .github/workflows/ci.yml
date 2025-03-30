@@ -38,7 +38,7 @@ jobs:
         with:
           files: |
             *.tar.xz
-          draft: true
+          prerelease: true
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -48,7 +48,8 @@ jobs:
     strategy:
       matrix:
         job:
-          - { config: x86_64-linux }
+          - { target: gcc8, os: ubuntu, variant: focal }
+          - { target: gcc14, os: ubuntu, variant: focal }
 
     container:
       image: ghcr.io/benjaminkern/ci-images/ubuntu/20.04:main
@@ -58,5 +59,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Init
-        run: ct-ng --version
+      - name: Prepare config
+        run: >
+          cp ${{ matrix.job.os }}/${{ matrix.job.variant }}/${{ matrix.job.target }}/crosstool.config .config
+      - name: Configure toolchain
+        run: >
+          ct-ng olddefconfig
+      - name: Build
+        run: >
+          ct-ng build
+      - name: Create archive
+        run: >
+          tar -cJf ${{ matrix.job.target }}-linux-gnu.tar.xz -C ~/x-tools/
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-${{ matrix.job.target }}
+          path: ${{ matrix.job.target }}-linux-gnu.tar.xz
