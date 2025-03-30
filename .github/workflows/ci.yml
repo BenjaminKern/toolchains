@@ -16,6 +16,7 @@ jobs:
     needs:
       - build
       - release
+      - build_clang
     steps:
       - run: jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
 
@@ -23,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build
+      - build_clang
     permissions:
       contents: write
     steps:
@@ -76,3 +78,32 @@ jobs:
         with:
           name: artifact-${{ matrix.job.target }}
           path: ${{ matrix.job.target }}-linux-gnu.tar.xz
+
+  build_clang:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        job:
+          - { version: 20.1.1 }
+
+    container:
+      image: ghcr.io/benjaminkern/ci-images/ubuntu/20.04:main
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch llvm-project
+        run: |
+          mkdir -p llvm-project
+          curl -Ls https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ matrix.job.version }}/llvm-project-${{ matrix.job.version }}.src.tar.xz | tar xJf - -strip=1 -C llvm-project
+      - name: Configure
+        run: >
+          CC=clang-18 CXX=clang++-18 cmake -GNinja -S llvm-project/llvm -Bbuild -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi" -DLLVM_ENABLE_PROJECTS="bolt;clang;clang-tools-extra;lld;lldb"
+      - name: Build and package archive
+        run: >
+          cmake --build build --target package
+      - name: Show build folder content
+        run: >
+          ls -al build
