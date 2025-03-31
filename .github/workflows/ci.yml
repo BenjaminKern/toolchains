@@ -72,7 +72,7 @@ jobs:
           ct-ng build
       - name: Create archive
         run: >
-          tar -cJf ${{ matrix.job.target }}-linux-gnu.tar.xz -C /tmp/x-tools .
+          tar -cJf ${{ matrix.job.target }}-linux-gnu.tar.xz -C x-tools/ .
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
