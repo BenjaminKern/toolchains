@@ -73,7 +73,7 @@ jobs:
           ct-ng build
       - name: Create archive
         run: >
-          tar -cJf ${{ matrix.job.target }}-linux-gnu.tar.xz -C x-tools/ .
+          tar -cJf ${{ matrix.job.target }}-linux-gnu.tar.xz -C ~/x-tools/ .
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
@@ -101,12 +101,16 @@ jobs:
           curl -Ls https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ matrix.job.version }}/llvm-project-${{ matrix.job.version }}.src.tar.xz | tar xfJ - --strip-components=1 -C llvm-project/
       - name: Configure
         run: >
-          CC=clang-18 CXX=clang++-18 cmake -GNinja -S llvm-project/llvm -Bbuild -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SHARED_LIBS=OFF -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" -DLLVM_ENABLE_PROJECTS="bolt;clang;clang-tools-extra;lld" -DLLVM_TARGETS_TO_BUILD="X86;AArch64;ARM"
+          CC=clang-18 CXX=clang++-18 cmake -GNinja -S llvm-project/llvm -B$GITHUB_WORKSPACE/build -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_SHARED_LIBS=OFF -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" -DLLVM_ENABLE_PROJECTS="bolt;clang;clang-tools-extra;lld" -DLLVM_TARGETS_TO_BUILD="X86;AArch64;ARM"
       - name: Build and package archive
         run: >
-          cmake --build build --target package
+          cmake --build $GITHUB_WORKSPACE/build --target package
+      - name: Move tar out of build folder
+        run: >
+          mv $GITHUB_WORKSPACE/build/*.tar.gz .
+        shell: bash
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: artifact-llvm-${{ matrix.job.version }}
-          path: ./build/LLVM-${{ matrix.job.version }}-Linux.tar.gz
+          path: ./*.tar.gz
